@@ -87,3 +87,15 @@ http.createServer(app).listen(app.get('port'), function () {
   console.log('Express server listening on port ' + app.get('port'));
 });
 #adding to check PRs
+
+
+// A hypothetical route in routes/users.js or similar
+exports.profile = function(req, res) {
+  const username = req.query.name; // User-controlled input from URL query
+  // This is a VERY simplified and INSECURE example
+  // In a real app, you'd fetch user data from a DB and render it
+  res.render('profile', { userDisplayName: username });
+};
+
+// In your main app.js, you'd have a route like:
+// app.get('/users/profile', routesUsers.profile);
