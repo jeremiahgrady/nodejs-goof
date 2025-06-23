@@ -1,89 +1,68 @@
 /**
- * Module dependencies.
+ * Express.js application designed to demonstrate XSS vulnerabilities
+ * for SAST tool testing in a non-production environment.
+ *
+ * IMPORTANT: This code is intentionally vulnerable and should ONLY be used
+ * for security testing in a sandboxed, isolated environment.
+ * Do NOT deploy this to production.
  */
 
-// mongoose setup
-require('./mongoose-db');
-require('./typeorm-db')
+const express = require('express');
+const bodyParser = require('body-parser');
+const path = require('path');
 
-var st = require('st');
-var crypto = require('crypto');
-var express = require('express');
-var http = require('http');
-var path = require('path');
-var ejsEngine = require('ejs-locals');
-var bodyParser = require('body-parser');
-var session = require('express-session')
-var methodOverride = require('method-override');
-var logger = require('morgan');
-var errorHandler = require('errorhandler');
-var optional = require('optional');
-var marked = require('marked');
-var fileUpload = require('express-fileupload');
-var dust = require('dustjs-linkedin');
-var dustHelpers = require('dustjs-helpers');
-var cons = require('consolidate');
-const hbs = require('hbs')
+const app = express();
+const port = 3000;
 
-var app = express();
-var routes = require('./routes');
-var routesUsers = require('./routes/users.js')
+// In-memory store for messages (reset on server restart)
+const messages = [];
 
-// all environments
-app.set('port', process.env.PORT || 3001);
-app.engine('ejs', ejsEngine);
-app.engine('dust', cons.dust);
-app.engine('hbs', hbs.__express);
-cons.dust.helpers = dustHelpers;
-app.set('views', path.join(__dirname, 'views'));
+// Set EJS as the templating engine
 app.set('view engine', 'ejs');
-app.use(logger('dev'));
-app.use(methodOverride());
-app.use(session({
-  secret: 'keyboard cat',
-  name: 'connect.sid',
-  cookie: { path: '/' }
-}))
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(fileUpload());
+app.set('views', path.join(__dirname, 'views'));
 
-// Routes
-app.use(routes.current_user);
-app.get('/', routes.index);
-app.get('/login', routes.login);
-app.post('/login', routes.loginHandler);
-app.get('/admin', routes.isLoggedIn, routes.admin);
-app.get('/account_details', routes.isLoggedIn, routes.get_account_details);
-app.post('/account_details', routes.isLoggedIn, routes.save_account_details);
-app.get('/logout', routes.logout);
-app.post('/create', routes.create);
-app.get('/destroy/:id', routes.destroy);
-app.get('/edit/:id', routes.edit);
-app.post('/update/:id', routes.update);
-app.post('/import', routes.import);
-app.get('/about_new', routes.about_new);
-app.get('/chat', routes.chat.get);
-app.put('/chat', routes.chat.add);
-app.delete('/chat', routes.chat.delete);
-app.use('/users', routesUsers)
+// Middleware to parse URL-encoded bodies (for form submissions)
+app.use(bodyParser.urlencoded({ extended: true }));
+// Middleware to serve static files (if any, though not strictly needed for this example)
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Static
-app.use(st({ path: './public', url: '/public' }));
-
-// Add the option to output (sanitized!) markdown
-marked.setOptions({ sanitize: true });
-app.locals.marked = marked;
-
-// development only
-if (app.get('env') == 'development') {
-  app.use(errorHandler());
-}
-
-var token = 'SECRET_TOKEN_f8ed84e8f41e4146403dd4a6bbcea5e418d23a9';
-console.log('token: ' + token);
-
-http.createServer(app).listen(app.get('port'), function () {
-  console.log('Express server listening on port ' + app.get('port'));
+/**
+ * Route to display the main page with a message submission form
+ * and a list of submitted messages.
+ * This route demonstrates both vulnerable and safe rendering.
+ */
+app.get('/', (req, res) => {
+    // Render the 'index' EJS template, passing the current messages
+    res.render('index', { messages: messages });
 });
-#adding to check PRs
+
+/**
+ * Route to handle new message submissions.
+ * It adds the submitted message to the in-memory array.
+ */
+app.post('/submit-message', (req, res) => {
+    const newMessage = req.body.message; // Get the 'message' from the form body
+
+    if (newMessage) {
+        messages.push(newMessage); // Add the new message to the array
+        console.log(`New message added: "${newMessage}"`);
+    }
+    // Redirect back to the home page to display the updated messages
+    res.redirect('/');
+});
+
+// Start the server
+app.listen(port, () => {
+    console.log(`XSS Test App listening at http://localhost:${port}`);
+    console.log(`
+To test XSS:
+1. Go to http://localhost:${port}
+2. In the "Vulnerable Message Input", enter an XSS payload, e.g.:
+   <script>alert('XSS Test!');</script>
+   Or:
+   <img src="x" onerror="alert('XSS Attack!');">
+3. Submit the message. The script should execute.
+4. The "Safe Message Output" below it should render the input as plain text, not executing the script.
+    `);
+});
+
