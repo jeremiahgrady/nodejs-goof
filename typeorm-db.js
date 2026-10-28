@@ -3,8 +3,7 @@ var EntitySchema = typeorm.EntitySchema;
 
 const Users = require("./entity/Users")
 
-typeorm.createConnection({
-  name: "mysql",
+const dataSource = new typeorm.DataSource({
   type: "mysql",
   host: "localhost",
   port: 3306,
@@ -16,11 +15,13 @@ typeorm.createConnection({
   entities: [
     new EntitySchema(Users)
   ]
-}).then(() => {
+})
 
-  const dbConnection = typeorm.getConnection('mysql')
+module.exports = dataSource
 
-  const repo = dbConnection.getRepository("Users")
+dataSource.initialize().then(() => {
+
+  const repo = dataSource.getRepository("Users")
   return repo
 }).then((repo) => {
 
